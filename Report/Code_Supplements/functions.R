@@ -1,4 +1,4 @@
-#functions
+### Functions used in reports
 
 
 ## Round Numerics
@@ -73,7 +73,7 @@ respondent <- function(data, var){
 }
 
 
-#Q2 Function
+## Q2 Function
 
 engagement <- function(data, engage, age, gender, income, region, persona, k){
   tab <- data[get(age.group.name) %in% age & get(gender.name) %in% gender & 
@@ -85,7 +85,7 @@ engagement <- function(data, engage, age, gender, income, region, persona, k){
 }
 
 
-#Q3 Function
+## Q3 Function
 
 brand.percept <- function(data, age, gender, income, region, persona, k){
   brand <- data[get(age.group.name) %in% age & get(gender.name) %in% gender & 
@@ -109,7 +109,7 @@ brand.percept <- function(data, age, gender, income, region, persona, k){
 }
 
 
-#Q4 Function
+## Q4 Function
 
 outcome.gap <- function(data, outcome1, outcome2, k, digits){
   ## outcome 1
@@ -135,7 +135,7 @@ outcome.gap <- function(data, outcome1, outcome2, k, digits){
 
 
 
-#Q5 Function
+## Q5 Function
 
 ag.engage <- function(data, engage, product, age, gender, income, region, persona){
   subdat <- data[!get(product.name) %in% product & get(age.group.name) %in% age & get(gender.name) %in% gender & 
