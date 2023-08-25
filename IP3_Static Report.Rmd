@@ -1,0 +1,171 @@
+---
+title: "Telecommunications Marketing Survey Report"
+author: "Melissa Wu"
+date: "July 11, 2023"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, comment="", warning = FALSE, message = FALSE, tidy.opts=list(width.cutoff=55), tidy = TRUE)
+```
+
+```{r libraries}
+library(data.table)
+library(DT)
+```
+
+```{r source}
+source("constants.R")
+source("functions.R")
+```
+
+```{r read_data}
+# Set Working Directory to Source File Location
+mobile = fread(input ="../Data/mobile_phone_survey_data.csv")
+```
+
+```{r define}
+mobile$`Age Group` <- cut(mobile$Age, breaks = unlist(age_groups), labels = age_labels)
+mobile$`Income Group` <- cut(mobile$Income, breaks = unlist(income_groups), labels = income_labels)
+```
+
+```{r functions}
+```
+
+
+
+
+# Calculations {.tabset}
+
+
+### Q1: Respondent Variables {.tabset}
+
+#### Age Group
+  
+What are the distribution of respondents across **age groups**?  
+  
+```{r q1_age.group}
+datatable(respondent(mobile, age.group.name))
+```
+
+#### Gender
+  
+What are the distribution of respondents across **gender**?   
+
+```{r q1_gender}
+datatable(respondent(mobile, gender.name))
+```
+
+#### Income Group
+  
+What are the distribution of respondents across **income groups**?   
+  
+```{r q1_income.group}
+datatable(respondent(mobile, income.group.name))
+```
+
+#### Region
+  
+What are the distribution of respondents across **region**?   
+  
+```{r region}
+datatable(respondent(mobile, region.name))
+```
+
+#### Persona
+  
+What are the distribution of respondents across **persona**?  
+  
+```{r persona}
+datatable(respondent(mobile, persona.name))
+```
+
+
+### Q2:  Segmented Outcomes {.tabset}
+
+#### Part A
+
+What are the top 5 products by Awareness rates in the Northeast?
+
+```{r q2_a}
+eng1 <- engagement(mobile, awareness.name, age_labels, gender_labels, income_labels, "Northeast", persona_labels, 5)
+datatable(eng1)
+
+```
+
+#### Part B
+
+What are the top 5 products by advocacy rates among female respondents who earn at least $100,000?
+
+```{r q2_b}
+eng2 <- engagement(mobile, advocacy.name, age_labels, "Female", c("100,000 - Under 150,000", "150,000+"), region_labels, persona_labels, 5)
+datatable(eng2)
+```
+
+
+
+
+
+### Q3:  Overall Brand Perceptions {.tabset}
+
+What are the top 5 brands by the overall average perception?
+
+
+```{r q3}
+top5.ave.perception <- brand.percept(mobile, age_labels, gender_labels, income_labels, region_labels, persona_labels, 5)
+datatable(top5.ave.perception)
+```
+
+
+### Q4: Gaps in Outcomes {.tabset}
+
+
+#### Part A
+
+Which 5 products have the largest gap between the rate of consumption and the rate of awareness?  This would correspond to a formula of Difference = 100 * (Average Consumption - Average Awareness).  (Please use this exact formula.  Do not use the absolute value.  Focus only on the highest positive gaps.)  Display a bar graph showing the 5 largest differences in decreasing sorted order.
+
+```{r q4_a}
+outcome1 <- outcome.gap(mobile, consumption.name, awareness.name, 5, 2)
+
+ggplot(data=outcome1, aes(x=reorder(Product, -Difference), y=Difference)) +
+  geom_bar(stat="identity", width=0.5, fill="steelblue") + xlab("Product")
+
+
+```
+  
+  
+#### Part B
+
+Which 5 products have the largest gap between the rate of awareness and the average satisfaction?  This would correspond to a formula of Difference = 100 * (Average Awareness - Average Satisfaction).  (Please use this exact formula.  Do not use the absolute value.  Focus only on the highest positive gaps.)  Display a bar graph showing the 5 largest differences in decreasing sorted order.
+
+```{r q4_b}
+outcome2 <- outcome.gap(mobile, awareness.name, satisfaction.name, 5, 2)
+
+ggplot(data=outcome2, aes(x=reorder(Product, -Difference), y=Difference)) +
+  geom_bar(stat="identity", width=0.5, fill="steelblue") + xlab("Product")
+
+```
+  
+
+
+### Q5: Aggregated Engagement {.tabset}
+
+#### Part A
+
+How much impact does respondent's overall trends in awareness have for that person's awareness with Buzzdial phones?
+
+```{r q5_a}
+ag.engage(mobile, awareness.name, "Buzzdial", age_labels, gender_labels, income_labels, region_labels, persona_labels)
+
+```
+
+#### Part B
+
+How much impact does respondent's overall trends in satisfaction have for that person's satisfaction with Buzzdial phones?
+
+```{r q5_b}
+ag.engage(mobile, satisfaction.name, "Buzzdial", age_labels, gender_labels, income_labels, region_labels, persona_labels)
+
+```
+

@@ -1,0 +1,289 @@
+---
+title: "Mobile Phones"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+runtime: shiny
+---
+
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(shiny)
+library(rmarkdown)
+library(knitr)
+library(Hmisc)
+library(DT)
+
+library(data.table)
+assignInNamespace("cedta.override", c(data.table:::cedta.override,"rmarkdown"), "data.table")
+
+opts_chunk$set(echo = FALSE, comment="", warning = FALSE, message = FALSE, tidy.opts=list(width.cutoff=55), tidy = TRUE)
+
+```
+
+```{r source_functions}
+source("constants.R")
+source("functions.R")
+```
+
+```{r read_data, include=FALSE, eval=TRUE}
+# Read the file from relevant directory on your local computer
+# /Users/apple/Downloads/AA5902_DataScienceConsulting/IndProj3
+
+mobile <- fread(input = "../Data/mobile_phone_survey_data.csv", verbose = F)
+
+```
+
+```{r constants}
+# Most constants have been placed in the file constants.R to unify the work across reporting and applications.
+# Additional constants that are unique to this reporting engine can be added here.
+
+### add age group column & income group columns
+age_groups <-  c(17, 34, 49, 64, 75)
+age_labels <- c('18-34', '35-49', '50-64', '65+')
+
+income_groups <- c(-1, 49999, 69999, 99999, 149999, Inf)
+income_labels <- c('Under 50,000', '50,000 - Under 75,000', '75,000 - Under 100,000', '100,000 - Under 150,000', '150,000+')
+
+mobile$`Age Group` <- cut(mobile$Age, breaks = unlist(age_groups), labels = age_labels)
+mobile$`Income Group` <- cut(mobile$Income, breaks = unlist(income_groups), labels = income_labels)
+
+# unique variables
+unique.age.groups <- mobile[, sort(unique(get(age.group.name)))]
+unique.genders <- mobile[, sort(unique(get(gender.name)))]
+unique.income.groups <- mobile[, sort(unique(get(income.group.name)))]
+unique.regions <- mobile[, sort(unique(get(region.name)))]
+unique.personas <- mobile[, sort(unique(get(persona.name)))]
+
+unique.products <- mobile[, unique(get(product.name))]
+
+respondent.variables <- c(age.group.name, gender.name, income.group.name, region.name, persona.name)
+states.of.engagement <- c(awareness.name, consideration.name, consumption.name, satisfaction.name, advocacy.name)
+
+bp.traits <- names(mobile)[grep(pattern = bp.pattern, x = names(mobile))]
+
+
+```
+
+
+```{r functions}
+# Most functions have been placed in the file functions.R to unify the work across reporting and applications.
+
+# Additional functions that are unique to this reporting engine can be added here.
+```
+
+
+
+
+
+Introduction
+=====================================  
+
+We are analyzing data from the Marketing Department examining respondents' engagement and perception on telecommunication products.  
+
+The survey was given to `r mobile[, length(unique(get(id.name)))]` respondents and covered `r mobile[, length(unique(get(product.name)))]` separate products.
+
+Click on the tabs to see different reports.
+
+
+
+
+Respondents
+===================================
+
+
+Row {data-height=500}
+-------------------------------------
+
+```{r q1_input}
+inputPanel(
+  selectInput(inputId="respondent_variable", label = "Select Variable:", choices = respondent.variables, selected = respondent.variables[1]),
+)
+```
+
+Row {data-height=500}
+-------------------------------------
+
+```{r q1_output}
+renderPlot({
+  tab <- percentage.table(x = mobile[, .SD[1], by = id.name][, get(input$respondent_variable)])
+  barplot(height = tab, space=0.01, las = 1, main = input$respondent_variable, ylab = "Percentage", xlab = input$respondent_variable, ylim = c(0, 1.2*max(tab, na.rm = TRUE)), col = "dodgerblue")
+  
+  space_val = 0
+    text(x = -0.4 + 1:length(tab) * (1+space_val), y = tab, labels = sprintf("%.1f%%", tab), pos = 3)
+})
+```
+
+Engagement
+=====================================  
+
+
+Row {data-height=500}
+-------------------------------------
+
+```{r q2_input}
+inputPanel(
+  selectInput(inputId="em_state", label = "State of Engagement:", choices = states.of.engagement, selected = states.of.engagement[1]),
+  selectInput(inputId="em_inputs", label = "Choose Inputs:", choices = c(age.group.name, gender.name, region.name, income.group.name, persona.name), selected = c(age.group.name, gender.name, region.name, income.group.name), multiple = TRUE),
+  selectInput(inputId="em_age_group", label = "Age", choices = unique.age.groups, selected = unique.age.groups, multiple = TRUE),
+  selectInput(inputId = "em_gender", label = "Gender", choices = unique.genders, selected = unique.genders, multiple = TRUE),
+  selectInput(inputId = "em_income_group", label = "Income", choices = unique.income.groups, selected = unique.income.groups, multiple = TRUE),
+  selectInput(inputId = "em_region", label = "Region", choices = unique.regions, selected = unique.regions, multiple = TRUE),
+  selectInput(inputId = "em_persona", label = "Persona", choices = unique.personas, selected = unique.personas, multiple = TRUE),
+  sliderInput(inputId = "em_number_of_products", label = "Number of Top Products", min = 0, max = 20, value = 5, step = 1)
+)
+```
+
+Row {data-height=800}
+-------------------------------------
+
+```{r q2_output}
+renderPlot({
+  tab <- mobile[get(age.group.name) %in% input$em_age_group & get(gender.name) %in% input$em_gender & 
+                get(income.group.name) %in% input$em_income_group & get(region.name) %in% input$em_region & 
+                get(persona.name) %in% input$em_persona][, .(Mean = round.numerics(100*mean(get(input$em_state), na.rm=TRUE), 2)), by = product.name]
+  setorderv(x = tab, cols = "Mean", order = -1)
+  topk.engage <- tab[1:input$em_number_of_products]
+  
+  barplot(height = topk.engage[,Mean], names.arg = topk.engage[ ,get(product.name)], space=0.01, las = 1, ylab = sprintf("Rate of %s", input$em_state), ylim = c(-10, 100), axes = F, col = "dodgerblue")
+  axis(side = 2, at = 20*(0:5), las = 2)
+  
+    space_val = 0
+    text(x = -0.4 + 1:topk.engage[,.N] * (1+space_val), y = topk.engage[, Mean], labels = sprintf("%.1f%%", topk.engage[, Mean]), pos = 3)
+})
+```
+
+
+Brand Perception
+=====================================  
+
+Row {data-height=800}
+-------------------------------------
+
+```{r q3_input}
+inputPanel(
+  selectInput(inputId="bp_age_group", label = "Age", choices = unique.age.groups, selected = unique.age.groups, multiple = TRUE),
+  selectInput(inputId = "bp_gender", label = "Gender", choices = unique.genders, selected = unique.genders, multiple = TRUE),
+  selectInput(inputId = "bp_income_group", label = "Income", choices = unique.income.groups, selected = unique.income.groups, multiple = TRUE),
+  selectInput(inputId = "bp_region", label = "Region", choices = unique.regions, selected = unique.regions, multiple = TRUE),
+  selectInput(inputId = "bp_persona", label = "Persona", choices = unique.personas, selected = unique.personas, multiple = TRUE),
+  sliderInput(inputId = "bp_number_of_products", label = "Number of Top Products", min = 0, max = 20, value = 5, step = 1)
+)
+```
+
+Row {data-height=800}
+-------------------------------------
+
+```{r q3_output}
+renderPlot({
+  brand <- mobile[get(age.group.name) %in% input$bp_age_group & get(gender.name) %in% input$bp_gender & 
+                  get(income.group.name) %in% input$bp_income_group & get(region.name) %in% input$bp_region & 
+                  get(persona.name) %in% input$bp_persona][, .(ave.user.friendly = mean(get(user.friendly.name), na.rm=TRUE),
+                                                      ave.fast = mean(get(fast.name), na.rm=TRUE),
+                                                      ave.battery.life = mean(get(battery.life.name), na.rm=TRUE),
+                                                      ave.camera = mean(get(camera.name), na.rm=TRUE),
+                                                      ave.sleek = mean(get(sleek.name), na.rm=TRUE),
+                                                      ave.stylish = mean(get(stylish.name), na.rm=TRUE),
+                                                      ave.status = mean(get(status.symbol.name), na.rm=TRUE),
+                                                      ave.screen = mean(get(good.screen.size.name), na.rm=TRUE),
+                                                      ave.boring = 10 - mean(get(boring.name), na.rm=TRUE),
+                                                      ave.bulky = 10 - mean(get(bulky.name), na.rm=TRUE),
+                                                      ave.fragile = 10 - mean(get(fragile.name), na.rm=TRUE),
+                                                      ave.expensive = 10 - mean(get(expensive.name), na.rm=TRUE)), by=product.name]
+  brand.overall <- brand[,.(overall.ave.perception = round.numerics(rowMeans(.SD), 2)), by=product.name]
+  setorderv(x = brand.overall, cols = "overall.ave.perception", order = -1)
+  top.bp <- brand.overall[1:input$bp_number_of_products]
+
+  barplot(height = top.bp[, overall.ave.perception], names.arg = top.bp[,get(product.name)], space=0.01, las = 1, ylab = sprintf("Ovearall Brand Perception"), ylim = c(-5, 15), axes = F, col = "dodgerblue")
+  axis(side = 2, at = 20*(0:5), las = 2)
+  
+  space_val = 0
+    text(x = -0.4 + 1:top.bp[,.N] * (1+space_val), y = top.bp[, overall.ave.perception], labels = sprintf("%.1f%%", top.bp[, overall.ave.perception]), pos = 3)
+})
+```
+
+
+Outcome Gaps
+=====================================  
+
+Row {data-height=500}
+-------------------------------------
+
+```{r q4_input}
+inputPanel(
+  selectInput(inputId = "outcome_engagement_state_1", label = "Select State of Engagement #1:", choices = states.of.engagement, selected = states.of.engagement[1]),
+  selectInput(inputId = "outcome_engagement_state_2", label = "Select State of Engagement #2:", choices = states.of.engagement, selected = states.of.engagement[2]),
+  checkboxInput(inputId = "outcome_show_percentages", label = "Show Percentages", value = TRUE),
+  sliderInput(inputId = "outcome_number_of_products", label = "Number of Top Products", min = 0, max = 20, value = 5, step = 1),
+  sliderInput(inputId = "outcome_digits", label = "Number of Decimal Digits", min = 0, max = 6, value = 2, step = 1)
+)
+```
+
+Row {data-height=500}
+-------------------------------------
+
+```{r q4_output}
+renderPlot({
+   
+  ## outcome 1
+  if(input$outcome_engagement_state_1 == satisfaction.name){
+    ave1 <- mobile[, .(ave.1 = mean(get(input$outcome_engagement_state_1), na.rm=TRUE)), by = product.name]
+  }
+  if(input$outcome_engagement_state_1 != satisfaction.name){
+    ave1 <- mobile[!is.na(get(input$outcome_engagement_state_1)), .(ave.1 = sum(get(input$outcome_engagement_state_1) == 1) /.N ), by = product.name]
+  }
+  ## outcome 2
+  if(input$outcome_engagement_state_2 == satisfaction.name){
+    ave2 <- mobile[, .(ave.2 = mean(get(input$outcome_engagement_state_2), na.rm=TRUE)), by = product.name]
+  }
+  if(input$outcome_engagement_state_2 != satisfaction.name){
+    ave2 <- mobile[!is.na(get(input$outcome_engagement_state_2)), .(ave.2 = sum(get(input$outcome_engagement_state_2) == 1) /.N ), by = product.name]
+  }
+  ## merge
+  engage.diff <- merge(ave1, ave2, by= product.name)[, .(Difference = 100*(ave.1 - ave.2)), by=product.name]
+  setorderv(x = engage.diff, cols = "Difference", order = -1)
+  topk.outcome.gap <- engage.diff[1:input$outcome_number_of_products]
+
+  barplot(height = topk.outcome.gap[, Difference], names.arg = topk.outcome.gap[,get(product.name)], space=0.01, las = 1, main = sprintf("%s vs %s", input$outcome_engagement_state_1, input$outcome_engagement_state_2), xlab = "Products", ylab ="Outcome Gap", ylim = c(-10, 120), axes = F, col = "dodgerblue")
+  axis(side = 2, at = 20*(0:5), las = 2)
+  
+  if(input$outcome_show_percentages == TRUE){
+    space_val = 0
+    text(x = -0.4 + 1:topk.outcome.gap[ , .N] * (1+space_val), y = topk.outcome.gap[ ,Difference], labels = sprintf(paste0("%.", input$outcome_digits, "f%%"), topk.outcome.gap[ ,Difference]), pos = 3)
+  }
+})
+
+```
+
+Aggregated Engagement
+=====================================  
+
+Row {data-height=500}
+-------------------------------------
+
+
+```{r q5_input}
+
+inputPanel(
+  selectInput(inputId="ae_state", label = "State of Engagement:", choices = states.of.engagement, selected = states.of.engagement[1]),
+  selectInput(inputId="ae_product", label = "Product", choices = unique.products, selected = unique.products[1], multiple = TRUE),
+  selectInput(inputId="ae_inputs", label = "Choose Inputs:", choices = c(age.group.name, gender.name, region.name, income.group.name, persona.name, bp.traits), selected = c(age.group.name, gender.name, region.name, income.group.name), multiple = TRUE),
+  selectInput(inputId="ae_age_group", label = "Age", choices = unique.age.groups, selected = unique.age.groups, multiple = TRUE),
+  selectInput(inputId = "ae_gender", label = "Gender", choices = unique.genders, selected = unique.genders, multiple = TRUE),
+  selectInput(inputId = "ae_income_group", label = "Income", choices = unique.income.groups, selected = unique.income.groups, multiple = TRUE),
+  selectInput(inputId = "ae_region", label = "Region", choices = unique.regions, selected = unique.regions, multiple = TRUE),
+  selectInput(inputId = "ae_persona", label = "Persona", choices = unique.personas, selected = unique.personas, multiple = TRUE)
+)
+
+```
+
+Row {data-height=500}
+-------------------------------------
+
+```{r q5_output}
+renderDataTable({
+  ag.engage(mobile, input$ae_state, input$ae_product, input$ae_age_group, input$ae_gender, input$ae_income_group, input$ae_region, input$ae_persona)
+})
+```
+
